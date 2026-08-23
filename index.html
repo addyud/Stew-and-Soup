@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ghanaian Kitchen</title>
+<meta name="theme-color" content="#1B120E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Kitchen">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Anton&family=Karla:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#1B120E; --panel:#291B14; --sunk:#160E0A; --line:#3A281D;
+  --fg:#F3E9D7; --muted:#9C8B79; --soft:#C8B49C;
+  --hot:#C4351F; --warm:#E5A23C; --check:#5C4433;
+  --display:'Young Serif',Georgia,serif;
+  --body:'Karla',system-ui,-apple-system,sans-serif;
+  --radius:10px;
+}
+body.stew{
+  --bg:#E9E3D5; --panel:#DCD4C2; --sunk:#F1ECE1; --line:#C2B9A4;
+  --fg:#1F1C17; --muted:#6E6A5F; --soft:#3A362E;
+  --hot:#B03A2E; --warm:#A8792C; --check:#6E6A5F;
+  --display:'Anton',Impact,sans-serif;
+  --radius:2px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--fg);
+  font-family:var(--body); font-size:16px; line-height:1.5;
+  transition:background .25s ease,color .25s ease;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+button{font-family:inherit;font-size:inherit;color:inherit;background:none;border:none;padding:0;cursor:pointer}
+button:focus-visible{outline:2px solid var(--warm);outline-offset:2px}
+ol,ul{margin:0;padding:0;list-style:none}
+
+/* ——— chrome ——— */
+.tabs{
+  position:sticky;top:0;z-index:20;display:flex;
+  background:var(--bg);border-bottom:1px solid var(--line);
+  padding-top:env(safe-area-inset-top);
+}
+.tab{flex:1;padding:14px 8px;font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);border-bottom:2px solid transparent}
+.tab[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--hot);font-weight:700}
+
+.wrap{max-width:760px;margin:0 auto;padding:22px 18px 60px}
+.eyebrow{font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:var(--warm);margin:0 0 8px}
+h1{font-family:var(--display);font-weight:400;margin:0;line-height:1.02;font-size:34px}
+body.stew h1{text-transform:uppercase;font-size:38px;letter-spacing:.01em}
+.lede{color:var(--muted);font-size:14px;margin:10px 0 0;max-width:46ch}
+
+/* ——— controls ——— */
+.controls{display:flex;flex-wrap:wrap;gap:10px;margin:22px 0 0}
+.seg{display:flex;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+body.stew .seg{border-radius:2px;border-color:var(--fg)}
+.seg button{padding:9px 15px;font-size:13px;color:var(--muted);white-space:nowrap}
+body.stew .seg button{text-transform:uppercase;letter-spacing:.05em}
+.seg button[aria-pressed="true"]{background:var(--hot);color:#F3E9D7;font-weight:700}
+body.stew .seg button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+.stepper{display:flex;align-items:center;border:1px solid var(--line);border-radius:999px}
+body.stew .stepper{border-radius:2px;border-color:var(--fg)}
+.stepper button{padding:8px 16px;font-size:20px;color:var(--warm);line-height:1}
+.stepper span{min-width:96px;text-align:center;font-size:13px;font-variant-numeric:tabular-nums}
+.stepper b{font-family:var(--display);font-size:18px;font-weight:400}
+.pill{padding:9px 15px;font-size:13px;border:1px solid var(--line);border-radius:999px;color:var(--fg)}
+body.stew .pill{border-radius:2px;border-color:var(--fg);text-transform:uppercase;letter-spacing:.05em}
+.meta{align-self:center;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+
+/* ——— panels ——— */
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:15px;margin-top:18px}
+.panel .cap{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+.panel p{margin:12px 0 0;font-size:14px;color:var(--soft)}
+.flag{margin-top:16px;padding:12px;font-size:12.5px;line-height:1.55;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);color:var(--soft)}
+.flag b{color:var(--hot)}
+
+/* protein clock */
+.clockhead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:9px}
+.clockhead .tot{font-family:var(--display);color:var(--warm);font-size:14px}
+.clockbar{display:flex;height:16px;border-radius:999px;overflow:hidden;gap:1px}
+.clockbar i{transition:flex-grow .4s ease}
+.clocklab{display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:var(--muted)}
+
+/* stock gauge */
+.gauge{display:flex;height:34px;border:1px solid var(--fg)}
+.gauge button{flex:1;font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);border-right:1px solid var(--line)}
+.gauge button:last-child{border-right:none}
+.gauge button[data-rec="1"]{background:#CFC6B0}
+.gauge button[aria-pressed="true"]{background:var(--fg);color:var(--bg);font-weight:700}
+.gauge button[aria-pressed="true"][data-key="soup"]{background:var(--hot);color:#F3E9D7}
+.gaugelab{display:flex;justify-content:space-between;margin-top:6px;font-size:10px;color:var(--muted)}
+
+/* ——— lists ——— */
+h2{font-family:var(--display);font-weight:400;font-size:22px;margin:34px 0 4px}
+body.stew h2{text-transform:uppercase;font-size:24px}
+.subhead{font-size:11px;color:var(--warm);margin:0 0 14px;line-height:1.5}
+.grp{margin-bottom:22px}
+.grptitle{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--hot);padding-bottom:5px;border-bottom:1px solid var(--line);margin-bottom:10px}
+.grpnote{font-size:11.5px;font-style:italic;color:var(--muted);margin:0 0 10px}
+.ing{display:flex;gap:11px;align-items:flex-start;width:100%;text-align:left;padding:5px 0;font-size:14.5px;line-height:1.45}
+.ing .box{flex:0 0 auto;width:15px;height:15px;margin-top:3px;border:1.5px solid var(--check);border-radius:3px}
+body.stew .ing .box{border-radius:0}
+.ing.on{opacity:.34}
+.ing.on .box{background:var(--hot);border-color:var(--hot)}
+.amt{font-family:var(--display);font-weight:400;color:var(--warm)}
+body.stew .amt{color:var(--hot);font-family:var(--body);font-weight:700;font-variant-numeric:tabular-nums}
+.tag{display:inline-block;margin-left:5px;font-size:10.5px;font-style:normal;padding:1px 6px;border-radius:3px;background:var(--line);color:var(--muted)}
+.sub{display:block;font-size:11.5px;font-style:italic;color:var(--muted);margin-top:2px}
+
+/* ——— steps ——— */
+.step{padding-left:14px;border-left:3px solid var(--hot);margin-bottom:26px}
+.lane{font-size:10px;letter-spacing:.18em;text-transform:uppercase;margin-bottom:2px}
+.step h3{font-family:var(--display);font-weight:400;font-size:17px;margin:0 0 5px}
+body.stew .step h3{text-transform:uppercase;font-size:18px}
+.step p{margin:0;font-size:14.5px;color:var(--soft);line-height:1.55}
+.warn{margin-top:8px !important;padding-left:9px;border-left:1px solid var(--check);font-size:11.5px !important;font-style:italic;color:var(--warm) !important}
+
+/* ——— timer ——— */
+.timer{margin-top:11px;background:var(--sunk);border:1px solid var(--line);border-radius:calc(var(--radius) - 2px);overflow:hidden}
+.timer .row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 11px}
+.timer .lbl{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.timer .clk{font-family:var(--display);font-size:19px;font-variant-numeric:tabular-nums;min-width:66px;text-align:right}
+body.stew .timer .clk{font-family:var(--body);font-weight:700}
+.timer .clk.done{color:var(--warm)}
+.timer .btns{display:flex;gap:6px}
+.timer .go{padding:6px 14px;font-size:12px;border-radius:999px;background:var(--hot);color:#F3E9D7;font-weight:500}
+body.stew .timer .go{border-radius:2px;text-transform:uppercase;letter-spacing:.05em}
+.timer .go.running{background:var(--check)}
+.timer .rst{padding:6px 10px;font-size:12px;border:1px solid var(--line);border-radius:999px;color:var(--muted)}
+body.stew .timer .rst{border-radius:2px}
+.timer .track{height:3px;background:var(--line)}
+.timer .fill{height:100%;width:0;background:var(--hot);transition:width 1s linear}
+
+.foot{margin-top:34px;font-size:12px;color:var(--muted);line-height:1.6}
+.foot p{margin:0 0 8px}
+.foot b{color:var(--fg)}
+
+@media (min-width:720px){
+  h1{font-size:46px} body.stew h1{font-size:54px}
+  .cols{display:grid;grid-template-columns:2fr 3fr;gap:38px;align-items:start}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none !important}}
+</style>
+</head>
+<body class="soup">
+<nav class="tabs" id="tabs">
+  <button class="tab" data-act="recipe" data-val="soup" aria-selected="true">Light Soup</button>
+  <button class="tab" data-act="recipe" data-val="stew" aria-selected="false">Beef Stew</button>
+</nav>
+<main class="wrap" id="app"></main>
+
+<script>
+/* ============================ helpers ============================ */
+const GLYPH = [[0,""],[.25,"¼"],[1/3,"⅓"],[.5,"½"],[2/3,"⅔"],[.75,"¾"],[1,""]];
+function fmt(v, down){
+  if (v >= 10) return String(Math.round(v));
+  const s = down ? Math.floor(v*4)/4 : v;
+  const w = Math.floor(s), r = s - w;
+  let g = "", best = Infinity, carry = 0;
+  for (const [val, gl] of GLYPH){
+    const d = Math.abs(r - val);
+    if (d < best){ best = d; g = gl; carry = (val === 1) ? 1 : 0; }
+  }
+  const n = w + carry;
+  if (n === 0 && !g) return down ? "a pinch" : "0";
+  if (n === 0) return g;
+  return g ? n + g : String(n);
+}
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const mmss = s => String(Math.floor(s/60)).padStart(2,"0") + ":" + String(s%60).padStart(2,"0");
+
+/* ============================ recipe data ============================ */
+const SOUP = {
+  id:"soup", base:12, min:2, max:16, stepBy:1,
+  eyebrow:"Ghanaian · unsieved, full fibre",
+  title:'Light Soup · Nkrakra',
+  lede:"Pick your meat and your headcount. The pulp stays in this time, so the broth carries body instead of transparency.",
+  proteins:{
+    goat:{label:"Goat", ing:"goat meat, cut into 2-inch chunks",
+      steamSec:1200, steamLabel:"Steam · 15–20 min",
+      simmerSec:2700, simmerLabel:"Simmer · 45+ min",
+      simmerNote:"Test at 45 minutes for the Ghanaian chew: resilient and springy, stubborn but yielding.",
+      tip:"The reference protein. Bone-in pieces feed the broth its gelatin.",
+      clock:[20,45,15,15]},
+    beef:{label:"Beef", ing:"beef chuck or shank, cut into 2-inch chunks",
+      steamSec:1200, steamLabel:"Steam · 15–20 min",
+      simmerSec:2700, simmerLabel:"Simmer · 45–90 min",
+      simmerNote:"Chuck lands near goat's clock; shank can hold out to 90 minutes. Simmer until stubborn-but-yielding.",
+      tip:"Chuck behaves like goat. Shank is slower but pays you back in body.",
+      clock:[20,60,15,15]},
+    chicken:{label:"Chicken", ing:"bone-in chicken thighs & drumsticks",
+      steamSec:720, steamLabel:"Steam · 10–12 min",
+      simmerSec:1500, simmerLabel:"Simmer · 20–25 min",
+      simmerNote:"Chicken is a paper wall next to goat's fortress: done at 20–25 minutes. Move on before it shreds.",
+      tip:"Less gelatin than goat or beef; skin-on and bone-in closes most of the gap.",
+      clock:[12,25,15,15]}
+  },
+  groups:[
+    {title:"The protein", items:[{id:"meat", base:8, unit:"lb", isMeat:true}]},
+    {title:"The aromatic paste — blend together", note:"3 of your 4 onions go here.", items:[
+      {id:"onion1", base:3, unit:"", name:"large onions, roughly chopped"},
+      {id:"garlic", base:36, unit:"", name:"garlic cloves, peeled (≈3 heads)"},
+      {id:"ginger", base:7, unit:"", name:"inches fresh ginger, unpeeled is fine"},
+      {id:"chilli", base:2, unit:"", name:"habanero peppers, stems removed", down:true, tag:"round down"},
+      {id:"shrimp", base:12, unit:"tbsp", name:"baby dried shrimp, rinsed", subFn:f => "Ground: " + fmt(5*f) + " tbsp"}
+    ]},
+    {title:"The soup body — boiled whole, then blended in", note:"And here is the 4th onion.", items:[
+      {id:"toms", base:5, unit:"", name:"large tomatoes, whole — heirloom or beefsteak",
+        subFn:f => "Roma instead: ≈" + Math.round(20*f) + ". Or " + Math.max(1,Math.round(2*f)) + " can(s) whole peeled, 28 oz, juice and all."},
+      {id:"onion2", base:1, unit:"", name:"large onion, halved"},
+      {id:"gegg", base:1, unit:"", name:"large garden egg or eggplant, whole"},
+      {id:"tpaste", base:5, unit:"tbsp", name:"tomato paste, for the meat steam"}
+    ]},
+    {title:"Liquid & finish", items:[
+      {id:"water", base:12, unit:"cups", name:"water", tag:"start high", sub:"Your 8–12 range. Unsieved puree adds body, so begin at the top."},
+      {id:"catfish", base:2, unit:"", name:"whole smoked catfish, rinsed & broken up", tag:"optional"},
+      {id:"shroom", base:2, unit:"lb", name:"oyster mushrooms"},
+      {id:"salt", base:2, unit:"tsp", name:"salt to start, adjust at the end", tag:"cut ⅓ if brined"}
+    ]}
+  ],
+  potSize:s => s >= 10 ? "12-qt stockpot" : s >= 7 ? "8-qt pot" : "5-qt Dutch oven",
+  steps(st){
+    const p = this.proteins[st.protein], f = st.servings/this.base;
+    return [
+      {t:"Blend the paste", b:"Blend the onions, garlic, ginger, habanero and dried shrimp into a smooth slurry."},
+      {t:"Steam the meat", b:"Coat the "+p.label.toLowerCase()+" with the slurry and tomato paste, add the starting salt, and steam on medium-low, stirring every 5 minutes, so the aromatics bond with the meat fibres.", sec:p.steamSec, lbl:p.steamLabel},
+      {t:"Simmer to the bite test", b:"Slowly add "+fmt(12*f)+" cups of water. Boil, skim the grey foam once, then drop to a gentle simmer with the lid ajar. "+p.simmerNote, sec:p.simmerSec, lbl:p.simmerLabel,
+        w:"The foam is coagulated protein and saw grit, not fibre. Skim it once at the boil and stop fussing."},
+      {t:"Soften the soup body", b:"Drop in the tomatoes (juice and all, if canned), the halved onion and the garden egg. Boil until everything is collapsing."+(st.protein==="chicken"?" Fish the chicken out now to protect its texture; it returns at the end.":""), sec:900, lbl:"Soften · ~15 min"},
+      {t:"Blend & return — no sieve", b:"Lift the vegetables out. Fresh tomato skins slip off with a pinch after boiling, and the garden egg peel pulls away too — take both off (canned tomatoes arrive skinless). Blend everything else smooth, seeds and pulp included, and pour it straight back in. Rinse the blender with a ladle of hot broth, never tap water.",
+        w:"Skipping the sieve keeps the fibre and costs you the clarity. Starting at the top of the water range buys some of it back."},
+      {t:"The smoke", b:"Add the smoked catfish, if using, and let it simmer its smoky essence into the broth.", sec:600, lbl:"Catfish · 10 min"},
+      {t:"Poach the mushrooms", b:"Add the oyster mushrooms and poach gently."+(st.protein==="chicken"?" Slide the chicken back in to reheat.":""), sec:300, lbl:"Mushrooms · 5 min"},
+      {t:"The polish", b:"Taste for salt. Deeply savoury, with real body from the unsieved pulp. Serve with fresh fufu."}
+    ];
+  },
+  foot:[["Cook time never shrinks with the batch.","The bite test rules, not the clock. Small pots also evaporate fast, so keep the lid nearly shut and top up if the meat surfaces."],
+        ["Smoked catfish is optional.","It is authentically omitted in a pure goat version."]]
+};
+
+const STEW = {
+  id:"stew", base:12, min:2, max:20, stepBy:2,
+  eyebrow:"No Maggi · caterer's meat style",
+  lede:"Deep, spicy, savoury and built without a single bouillon cube. The meat steams dry to make its own stock, the gravy is fried separately, and you decide how much of that stock is allowed back in.",
+  proteins:{
+    beef:{label:"Beef shank", title:"Beef Shank Stew", ing:"beef hind shank, bone-in",
+      steamSec:900, steamLabel:"Dry steam · 15 min", simmerSec:2100, simmerLabel:"Simmer · 30–40 min",
+      wash:"Rinse thoroughly with cool water and lime or vinegar to strip the bone dust left by the butcher's saw.",
+      tip:"The template's own protein. Bone and connective tissue make the stock that later becomes your gravy.", source:true},
+    goat:{label:"Goat", title:"Goat Stew", ing:"goat, bone-in, cut into chunks",
+      steamSec:900, steamLabel:"Dry steam · 15 min", simmerSec:2100, simmerLabel:"Simmer · 30–40 min",
+      wash:"Rinse with cool water and lime or vinegar. Bone-saw grit and any lingering funk both come off here.",
+      tip:"A clean swap for shank — same collagen, same clock, same steps end to end. Expect the top of the 30–40 window.", source:false},
+    chicken:{label:"Chicken", title:"Chicken Stew", ing:"bone-in chicken thighs & drumsticks",
+      steamSec:600, steamLabel:"Dry steam · 10 min", simmerSec:1050, simmerLabel:"Simmer · 15–20 min",
+      wash:"Rinse with cool water and lime or vinegar. No bone dust to chase, but the acid rinse is still the habit.",
+      tip:"Roughly half the window of the collagen cuts, and less collagen given up, so the gravy sits thinner. Lean on stock control rather than water.", source:false}
+  },
+  stock:[
+    {key:"caterer", label:"Caterer's cut", cups:1, blurb:"Barely a splash. Meat-forward, clings to the spoon, almost a paste."},
+    {key:"gravy", label:"Rich gravy", cups:2.5, rec:true, blurb:"The template's target. Thick enough to coat, loose enough to spoon over rice, red oil floating on top."},
+    {key:"loose", label:"Loose for rice", cups:4.5, blurb:"More sauce to soak into a plate of rice. Less concentration, more volume."},
+    {key:"soup", label:"Past the line", cups:7, blurb:"The failure mode the recipe warns about. You wanted a rich gravy, not a soup, and there is no walking it back except by boiling it down again."}
+  ],
+  groups:[
+    {title:"The protein", items:[{id:"meat", base:7.5, unit:"lb", isMeat:true}]},
+    {title:'The "flavour bomb" — blend together', items:[
+      {id:"onion1", base:2, unit:"", name:"large red onions, roughly chopped"},
+      {id:"ginger", base:45, unit:"g", name:"ginger, a generous thumb", r5:true},
+      {id:"garlic", base:7, unit:"", name:"garlic cloves"},
+      {id:"chilli", base:3, unit:"", name:"scotch bonnet or habanero, seeds in", down:true, tag:"round down"},
+      {id:"shrimp", base:2, unit:"tbsp", name:"baby dried shrimp", sub:"The natural Maggi replacement."},
+      {id:"fennel", base:1, unit:"tsp", name:"fennel seeds", sub:"The authentic scent."}
+    ]},
+    {title:"The tomato base", items:[
+      {id:"tpaste", base:12, unit:"oz", name:"tomato paste"},
+      {id:"roma", base:5, unit:"", name:"roma tomatoes, blended smooth"}
+    ]},
+    {title:"The pantry & finish", items:[
+      {id:"fryonion", base:1, unit:"", name:"red onion, sliced — for the fry", tag:"buy extra", sub:"Step 4 needs this and the original list never counts it."},
+      {id:"oil", base:1, unit:"cup", name:"extra virgin olive oil", floor:1/3, tag:"has a floor"},
+      {id:"curry1", base:3, unit:"tsp", name:"curry powder — for the steam"},
+      {id:"curry2", base:1, unit:"tsp", name:"curry powder — for the marriage"},
+      {id:"thyme", base:1, unit:"tbsp", name:"dried thyme"},
+      {id:"nutmeg", base:.5, unit:"tsp", name:"nutmeg"},
+      {id:"bay", base:2, unit:"", name:"bay leaves"},
+      {id:"veg", base:4, unit:"cups", name:"bell peppers, carrots or your choice, sliced"},
+      {id:"pop", base:1.5, unit:"tbsp", name:'extra dried shrimp — "the pop"'},
+      {id:"salt", base:2, unit:"tsp", name:"salt to start, adjust at the end"}
+    ]}
+  ],
+  steps(st){
+    const p = this.proteins[st.protein], f = st.servings/this.base;
+    const cups = this.stock.find(s => s.key === st.stock).cups * f;
+    return [
+      {lane:"Meat", t:"The safety wash", b:p.wash},
+      {lane:"Meat", t:"The steam — creating the stock", b:"Put the meat in a large pot with a third of the blended flavour bomb, the steam dose of curry powder and salt. Cover and steam on medium heat with no water at all. The meat has to release its own juices; that liquid is the entire stock.", sec:p.steamSec, lbl:p.steamLabel,
+        w:"Match the pot to the meat. In a pot too wide for a small batch, the juices spread thin and scorch before they ever pool."},
+      {lane:"Meat", t:"Simmer to chewy-tender", b:"Once the juices appear, add just enough water to submerge. Simmer only until chewy-tender. The short window is deliberate: it preserves the chew and keeps the collagen locked inside the meat.", sec:p.simmerSec, lbl:p.simmerLabel,
+        w:"This clock belongs to collagen, not batch size. A half batch still needs the full window."},
+      {lane:"Gravy", t:"Brown the sliced onion", b:"Heat the olive oil in "+(st.twoPots?"a second pot while the meat works":"the pot, once you've lifted the meat out")+". Fry the sliced red onion until it goes dark brown."},
+      {lane:"Gravy", t:"The paste fry", b:"Add the tomato paste and fry constantly until it turns dark burgundy and the oil runs red. Do not rush it — this is the step that kills the metallic taste.", sec:540, lbl:"Paste fry · 8–10 min",
+        w:"Barely shortens for a smaller batch. A chemistry clock, not a volume clock."},
+      {lane:"Gravy", t:"The flavour drop", b:"Add the remaining two thirds of the blended flavour bomb and fry.", sec:300, lbl:"Fry · 5 min"},
+      {lane:"Gravy", t:"The tomatoes", b:"Pour in the blended fresh tomatoes and simmer on medium-low until it thickens.", sec:900, lbl:"Thicken · 15 min"},
+      {lane:"Marriage", t:"The marriage & stock control", b:"Add the cooked meat into the gravy. Now ration the stock back in: about "+fmt(cups)+" cups at this setting, not the whole pot. Add the thyme, nutmeg, bay leaves and the second dose of curry powder, then drop the vegetables in.",
+        w:"You can always add more stock. You cannot take it out."},
+      {lane:"Marriage", t:"The umami finish", b:"Taste. If it needs more depth, the extra dried shrimp goes in now. Then simmer low until the oil separates and floats to the top. Serve with rice, yam, or just a spoon.", sec:780, lbl:"Finish · 10–15 min"}
+    ];
+  },
+  foot:[["Servings are my estimate.","Your sheet gives a weight, never a headcount. Twelve assumes caterer-style portions off 7.5 lb bone-in; plate lighter and the same pot reaches sixteen."],
+        ["The onion gap is real.","The list puts two red onions in the blend, then the fry asks for a sliced onion that was never bought. Buy three."]]
+};
+
+const RECIPES = {soup:SOUP, stew:STEW};
+
+/* ============================ state ============================ */
+const state = {
+  recipe:"soup",
+  soup:{servings:12, protein:"goat"},
+  stew:{servings:12, protein:"beef", twoPots:true, stock:"gravy"}
+};
+const ticked = new Set();
+const timers = Object.create(null);
+
+/* ============================ render ============================ */
+function amountFor(item, f){
+  if (item.r5) return String(Math.max(5, Math.round(item.base*f/5)*5));
+  let v = item.base * f;
+  if (item.floor) v = Math.max(item.floor, v);
+  return fmt(v, item.down);
+}
+
+function ingredientsHTML(R, st){
+  const f = st.servings / R.base;
+  const p = R.proteins[st.protein];
+  return R.groups.map(g => {
+    const rows = g.items.map(it => {
+      const key = R.id + ":" + it.id;
+      const name = it.isMeat ? p.ing : it.name;
+      const amt = amountFor(it, f);
+      const sub = it.subFn ? it.subFn(f) : it.sub;
+      return '<li><button class="ing'+(ticked.has(key)?" on":"")+'" data-act="tick" data-val="'+key+'">'
+        + '<span class="box"></span><span><span class="amt">'+esc(amt)+(it.unit?" "+esc(it.unit):"")+'</span> '+esc(name)
+        + (it.tag?'<em class="tag">'+esc(it.tag)+'</em>':"")
+        + (sub?'<span class="sub">'+esc(sub)+'</span>':"")
+        + '</span></button></li>';
+    }).join("");
+    return '<div class="grp"><div class="grptitle">'+esc(g.title)+'</div>'
+      + (g.note?'<p class="grpnote">'+esc(g.note)+'</p>':"") + '<ul>'+rows+'</ul></div>';
+  }).join("");
+}
+
+function timerHTML(R, idx, sec, lbl){
+  const key = R.id + ":" + idx;
+  let t = timers[key];
+  if (!t || t.dur !== sec) t = timers[key] = {dur:sec, left:sec, running:false};
+  const done = t.left === 0;
+  const pct = 100 - (t.left / t.dur) * 100;
+  return '<div class="timer" data-timer="'+key+'">'
+    + '<div class="row"><span class="lbl">'+esc(lbl)+'</span>'
+    + '<div class="btns" style="align-items:center;display:flex;gap:8px">'
+    + '<span class="clk'+(done?" done":"")+'">'+(done?"DONE":mmss(t.left))+'</span>'
+    + '<button class="go'+(t.running?" running":"")+'" data-act="timer" data-val="'+key+'">'+(done?"Reset":t.running?"Pause":"Start")+'</button>'
+    + ((!done && t.left !== t.dur)?'<button class="rst" data-act="treset" data-val="'+key+'">Reset</button>':"")
+    + '</div></div><div class="track"><div class="fill" style="width:'+pct+'%"></div></div></div>';
+}
+
+function stepsHTML(R, st){
+  return R.steps(st).map((s, i) => {
+    const lane = s.lane ? '<div class="lane" style="color:var(--hot)">'+esc(s.lane)+'</div>' : "";
+    return '<li class="step">'+lane+'<h3>'+esc(s.t)+'</h3><p>'+esc(s.b)+'</p>'
+      + (s.w?'<p class="warn">'+esc(s.w)+'</p>':"")
+      + (s.sec?timerHTML(R, i, s.sec, s.lbl):"") + '</li>';
+  }).join("");
+}
+
+function signatureHTML(R, st){
+  const p = R.proteins[st.protein];
+  if (R.id === "soup"){
+    const labels = ["steam","simmer","body","finish"];
+    const cols = ["var(--warm)","var(--hot)","#8A4A2E","#5C4433"];
+    const total = p.clock.reduce((a,b) => a+b, 0);
+    return '<div class="panel"><div class="clockhead"><span class="cap">The protein clock</span>'
+      + '<span class="tot">≈ '+total+' min active simmer</span></div>'
+      + '<div class="clockbar">'+p.clock.map((m,i) => '<i style="flex-grow:'+m+';background:'+cols[i]+'"></i>').join("")+'</div>'
+      + '<div class="clocklab">'+labels.map((l,i) => '<span>'+l+' · '+p.clock[i]+'m</span>').join("")+'</div>'
+      + '<p>'+esc(p.tip)+'</p></div>';
+  }
+  const f = st.servings / R.base;
+  const sel = R.stock.find(s => s.key === st.stock);
+  const bar = R.stock.map(s =>
+    '<button data-act="stock" data-val="'+s.key+'" data-key="'+s.key+'" data-rec="'+(s.rec?1:0)+'" aria-pressed="'+(s.key===st.stock)+'">'+esc(s.label)+'</button>'
+  ).join("");
+  return '<div class="panel"><div class="clockhead"><span class="cap">Stock control</span>'
+    + '<span class="tot" style="font-family:var(--body);font-weight:700;color:var(--fg)">'+fmt(sel.cups*f)+' cups back in</span></div>'
+    + '<div class="gauge">'+bar+'</div>'
+    + '<div class="gaugelab"><span>meat-forward</span><span>'+(sel.rec?"◆ the target":"◇ target is Rich gravy")+'</span><span>watery</span></div>'
+    + '<p'+(st.stock==="soup"?' style="color:var(--hot)"':"")+'>'+esc(sel.blurb)+'</p></div>';
+}
+
+function controlsHTML(R, st){
+  const segs = Object.entries(R.proteins).map(([k,v]) =>
+    '<button data-act="protein" data-val="'+k+'" aria-pressed="'+(k===st.protein)+'">'+esc(v.label)+'</button>').join("");
+  let extra = "";
+  if (R.id === "soup"){
+    extra = '<span class="meta">'+R.potSize(st.servings)+'</span>';
+  } else {
+    const p = R.proteins[st.protein];
+    const meat = Math.round((p.steamSec+p.simmerSec)/60), gravy = 37, fin = 13;
+    const total = st.twoPots ? Math.max(meat,gravy)+fin : meat+gravy+fin;
+    extra = '<button class="pill" data-act="pots">'+(st.twoPots?"Two pots":"One pot")+'</button>'
+      + '<span class="meta">~'+total+' min · '+fmt(7.5*st.servings/R.base)+' lb meat</span>';
+  }
+  return '<div class="controls"><div class="seg">'+segs+'</div>'
+    + '<div class="stepper"><button data-act="minus">−</button>'
+    + '<span><b>'+st.servings+'</b> servings</span>'
+    + '<button data-act="plus">+</button></div>' + extra + '</div>';
+}
+
+function render(){
+  const R = RECIPES[state.recipe], st = state[state.recipe];
+  const p = R.proteins[st.protein];
+  document.body.className = R.id;
+  document.querySelectorAll(".tab").forEach(t =>
+    t.setAttribute("aria-selected", String(t.dataset.val === state.recipe)));
+
+  let flag = "";
+  if (R.id === "stew" && !p.source){
+    flag = '<div class="flag"><b>Extrapolated.</b> Your sheet is written for beef hind shank. '
+      + (st.protein==="goat"
+        ? "Goat sits on the same clock, so the steps are unchanged, but the numbers are my read rather than ones you have tested."
+        : "Chicken's timings are my adaptation, not numbers you have tested.") + '</div>';
+  }
+  let potline = "";
+  if (R.id === "stew"){
+    const meat = Math.round((p.steamSec+p.simmerSec)/60);
+    potline = '<p class="lede" style="margin-top:12px;font-size:12px">'
+      + (st.twoPots
+        ? "Two pots: the gravy is built while the meat works, so " + (37 > meat ? "the gravy is your slow lane here, not the meat." : "the meat sets the pace.")
+        : "One pot: the gravy waits until you lift the meat out, costing about " + (meat+37+13 - (Math.max(meat,37)+13)) + " extra minutes.")
+      + '</p>';
+  }
+  const onionNote = R.id === "soup"
+    ? '<p class="subhead">Onions in total: '+fmt(4*st.servings/R.base)+' large. They appear twice below because they do two different jobs at two different stages.</p>'
+    : "";
+
+  document.getElementById("app").innerHTML =
+      '<p class="eyebrow">'+esc(R.eyebrow)+'</p>'
+    + '<h1>'+esc(R.id==="soup" ? R.title : p.title)+'</h1>'
+    + '<p class="lede">'+esc(R.lede)+'</p>'
+    + controlsHTML(R, st) + potline + flag
+    + '<p class="lede" style="color:var(--soft);font-size:14px">'+esc(p.tip)+'</p>'
+    + signatureHTML(R, st)
+    + '<div class="cols"><section><h2>Ingredients</h2>'+onionNote+ingredientsHTML(R, st)+'</section>'
+    + '<section><h2>Method</h2><ol>'+stepsHTML(R, st)+'</ol>'
+    + '<div class="foot">'+R.foot.map(x => '<p><b>'+esc(x[0])+'</b> '+esc(x[1])+'</p>').join("")+'</div>'
+    + '</section></div>';
+}
+
+/* ============================ events ============================ */
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-act]");
+  if (!b) return;
+  const R = RECIPES[state.recipe], st = state[state.recipe];
+  const act = b.dataset.act, val = b.dataset.val;
+  if (act === "recipe"){ state.recipe = val; }
+  else if (act === "protein"){ st.protein = val; }
+  else if (act === "plus"){ st.servings = Math.min(R.max, st.servings + R.stepBy); }
+  else if (act === "minus"){ st.servings = Math.max(R.min, st.servings - R.stepBy); }
+  else if (act === "pots"){ st.twoPots = !st.twoPots; }
+  else if (act === "stock"){ st.stock = val; }
+  else if (act === "tick"){ ticked.has(val) ? ticked.delete(val) : ticked.add(val); }
+  else if (act === "timer"){
+    const t = timers[val];
+    if (t.left === 0){ t.left = t.dur; t.running = false; } else { t.running = !t.running; }
+  }
+  else if (act === "treset"){ const t = timers[val]; t.left = t.dur; t.running = false; }
+  render();
+});
+
+setInterval(() => {
+  let dirty = false;
+  for (const key in timers){
+    const t = timers[key];
+    if (!t.running) continue;
+    t.left--;
+    if (t.left <= 0){ t.left = 0; t.running = false; dirty = true; continue; }
+    const node = document.querySelector('[data-timer="'+key+'"]');
+    if (node){
+      node.querySelector(".clk").textContent = mmss(t.left);
+      node.querySelector(".fill").style.width = (100 - (t.left/t.dur)*100) + "%";
+    }
+  }
+  if (dirty) render();
+}, 1000);
+
+render();
+</script>
+</body>
+</html>
