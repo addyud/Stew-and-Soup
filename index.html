@@ -327,6 +327,83 @@ const state = {
 const ticked = new Set();
 const timers = Object.create(null);
 
+/* ============================ survival ============================ */
+/* Phones freeze JS when you leave the app, so timers are stored as an
+   end timestamp and the remaining time is derived from the wall clock
+   whenever we come back. Nothing is ever counted down by hand. */
+const SAVE_KEY = "ghanaian-kitchen-v1";
+
+function syncTimers(){
+  const now = Date.now();
+  for (const k in timers){
+    const t = timers[k];
+    if (!t.running || !t.endAt) continue;
+    t.left = Math.max(0, Math.round((t.endAt - now)/1000));
+    if (t.left === 0){ t.running = false; t.endAt = null; }
+  }
+}
+function save(){
+  try{ localStorage.setItem(SAVE_KEY, JSON.stringify({state, timers, ticked:[...ticked]})); }catch(e){}
+}
+function load(){
+  try{
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return;
+    const o = JSON.parse(raw);
+    if (o.state){
+      if (RECIPES[o.state.recipe]) state.recipe = o.state.recipe;
+      ["soup","stew"].forEach(k => { if (o.state[k]) Object.assign(state[k], o.state[k]); });
+    }
+    if (Array.isArray(o.ticked)) o.ticked.forEach(k => ticked.add(k));
+    if (o.timers) for (const k in o.timers) timers[k] = o.timers[k];
+    syncTimers();
+  }catch(e){}
+}
+
+/* keep the screen awake while something is cooking */
+let wakeLock = null;
+async function updateWakeLock(){
+  const live = Object.keys(timers).some(k => timers[k].running);
+  try{
+    if (live && !wakeLock && "wakeLock" in navigator){
+      wakeLock = await navigator.wakeLock.request("screen");
+      wakeLock.addEventListener("release", () => { wakeLock = null; });
+    } else if (!live && wakeLock){
+      await wakeLock.release(); wakeLock = null;
+    }
+  }catch(e){}
+}
+
+/* chime + notification when one lands */
+let actx = null;
+function unlockAudio(){
+  try{
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === "suspended") actx.resume();
+  }catch(e){}
+}
+function chime(){
+  try{
+    if (!actx) return;
+    [0, .28, .56].forEach(offset => {
+      const o = actx.createOscillator(), g = actx.createGain();
+      o.connect(g); g.connect(actx.destination);
+      o.type = "sine"; o.frequency.value = 784;
+      const s = actx.currentTime + offset;
+      g.gain.setValueAtTime(.0001, s);
+      g.gain.exponentialRampToValueAtTime(.28, s + .02);
+      g.gain.exponentialRampToValueAtTime(.0001, s + .24);
+      o.start(s); o.stop(s + .26);
+    });
+  }catch(e){}
+}
+function notify(t){
+  try{
+    if (!("Notification" in window) || Notification.permission !== "granted") return;
+    new Notification("Timer done", {body:t.lbl || "Back to the pot.", tag:t.lbl});
+  }catch(e){}
+}
+
 /* ============================ render ============================ */
 function amountFor(item, f){
   if (item.r5) return String(Math.max(5, Math.round(item.base*f/5)*5));
@@ -358,7 +435,8 @@ function ingredientsHTML(R, st){
 function timerHTML(R, idx, sec, lbl){
   const key = R.id + ":" + idx;
   let t = timers[key];
-  if (!t || t.dur !== sec) t = timers[key] = {dur:sec, left:sec, running:false};
+  if (!t || t.dur !== sec) t = timers[key] = {dur:sec, left:sec, running:false, endAt:null};
+  t.lbl = lbl;
   const done = t.left === 0;
   const pct = 100 - (t.left / t.dur) * 100;
   return '<div class="timer" data-timer="'+key+'">'
@@ -366,7 +444,7 @@ function timerHTML(R, idx, sec, lbl){
     + '<div class="btns" style="align-items:center;display:flex;gap:8px">'
     + '<span class="clk'+(done?" done":"")+'">'+(done?"DONE":mmss(t.left))+'</span>'
     + '<button class="go'+(t.running?" running":"")+'" data-act="timer" data-val="'+key+'">'+(done?"Reset":t.running?"Pause":"Start")+'</button>'
-    + ((!done && t.left !== t.dur)?'<button class="rst" data-act="treset" data-val="'+key+'">Reset</button>':"")
+    + ((!done && (t.running || t.left !== t.dur))?'<button class="rst" data-act="treset" data-val="'+key+'">Reset</button>':"")
     + '</div></div><div class="track"><div class="fill" style="width:'+pct+'%"></div></div></div>';
 }
 
@@ -466,6 +544,7 @@ function render(){
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-act]");
   if (!b) return;
+  unlockAudio();
   const R = RECIPES[state.recipe], st = state[state.recipe];
   const act = b.dataset.act, val = b.dataset.val;
   if (act === "recipe"){ state.recipe = val; }
@@ -477,29 +556,54 @@ document.addEventListener("click", e => {
   else if (act === "tick"){ ticked.has(val) ? ticked.delete(val) : ticked.add(val); }
   else if (act === "timer"){
     const t = timers[val];
-    if (t.left === 0){ t.left = t.dur; t.running = false; } else { t.running = !t.running; }
+    if (t.left === 0){ t.left = t.dur; t.running = false; t.endAt = null; }
+    else if (t.running){ t.running = false; t.endAt = null; }
+    else {
+      t.running = true;
+      t.endAt = Date.now() + t.left * 1000;
+      if ("Notification" in window && Notification.permission === "default") Notification.requestPermission();
+    }
+    updateWakeLock();
   }
-  else if (act === "treset"){ const t = timers[val]; t.left = t.dur; t.running = false; }
+  else if (act === "treset"){ const t = timers[val]; t.left = t.dur; t.running = false; t.endAt = null; updateWakeLock(); }
+  save();
   render();
 });
 
+/* coming back from another app: recompute from the wall clock */
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState !== "visible") { save(); return; }
+  syncTimers(); save(); render(); updateWakeLock();
+});
+window.addEventListener("pageshow", () => { syncTimers(); render(); updateWakeLock(); });
+window.addEventListener("pagehide", save);
+
 setInterval(() => {
   let dirty = false;
+  const now = Date.now();
   for (const key in timers){
     const t = timers[key];
-    if (!t.running) continue;
-    t.left--;
-    if (t.left <= 0){ t.left = 0; t.running = false; dirty = true; continue; }
+    if (!t.running || !t.endAt) continue;
+    const left = Math.max(0, Math.round((t.endAt - now)/1000));
+    if (left === t.left) continue;
+    t.left = left;
+    if (left === 0){
+      t.running = false; t.endAt = null; dirty = true;
+      chime(); notify(t);
+      continue;
+    }
     const node = document.querySelector('[data-timer="'+key+'"]');
     if (node){
-      node.querySelector(".clk").textContent = mmss(t.left);
-      node.querySelector(".fill").style.width = (100 - (t.left/t.dur)*100) + "%";
+      node.querySelector(".clk").textContent = mmss(left);
+      node.querySelector(".fill").style.width = (100 - (left/t.dur)*100) + "%";
     }
   }
-  if (dirty) render();
+  if (dirty){ save(); updateWakeLock(); render(); }
 }, 1000);
 
+load();
 render();
+updateWakeLock();
 </script>
 </body>
 </html>
