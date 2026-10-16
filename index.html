@@ -172,6 +172,13 @@ function fmt(v, down){
 }
 const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const mmss = s => String(Math.floor(s/60)).padStart(2,"0") + ":" + String(s%60).padStart(2,"0");
+/* scaled "amount unit" for one ingredient id, so the method can repeat the list's numbers */
+function qty(R, id, f){
+  for (const g of R.groups) for (const it of g.items) if (it.id === id){
+    return amountFor(it, f) + (it.unit ? " " + it.unit : "");
+  }
+  return "";
+}
 
 /* ============================ recipe data ============================ */
 const SOUP = {
@@ -225,16 +232,17 @@ const SOUP = {
   potSize:s => s >= 10 ? "12-qt stockpot" : s >= 7 ? "8-qt pot" : "5-qt Dutch oven",
   steps(st){
     const p = this.proteins[st.protein], f = st.servings/this.base;
+    const q = id => qty(this, id, f);
     return [
-      {t:"Blend the paste", b:"Blend the onions, garlic, ginger, habanero and dried shrimp into a smooth slurry."},
-      {t:"Steam the meat", b:"Coat the "+p.label.toLowerCase()+" with the slurry and tomato paste, add the starting salt, and steam on medium-low, stirring every 5 minutes, so the aromatics bond with the meat fibres.", sec:p.steamSec, lbl:p.steamLabel},
+      {t:"Blend the paste", b:"Blend "+q("onion1")+" large onions, "+q("garlic")+" garlic cloves, "+q("ginger")+" inches of ginger, "+q("chilli")+" habanero and "+q("shrimp")+" dried shrimp into a smooth slurry."},
+      {t:"Steam the meat", b:"Coat the "+q("meat")+" of "+p.label.toLowerCase()+" with the slurry and "+q("tpaste")+" tomato paste, add "+q("salt")+" salt, and steam on medium-low, stirring every 5 minutes, so the aromatics bond with the meat fibres.", sec:p.steamSec, lbl:p.steamLabel},
       {t:"Simmer to the bite test", b:"Slowly add "+fmt(12*f)+" cups of water. Boil, skim the grey foam once, then drop to a gentle simmer with the lid ajar. "+p.simmerNote, sec:p.simmerSec, lbl:p.simmerLabel,
         w:"The foam is coagulated protein and saw grit, not fibre. Skim it once at the boil and stop fussing."},
-      {t:"Soften the soup body", b:"Drop in the tomatoes (juice and all, if canned), the halved onion and the garden egg. Boil until everything is collapsing."+(st.protein==="chicken"?" Fish the chicken out now to protect its texture; it returns at the end.":""), sec:900, lbl:"Soften · ~15 min"},
+      {t:"Soften the soup body", b:"Drop in "+q("toms")+" large tomatoes (juice and all, if canned), "+q("onion2")+" halved onion and "+q("gegg")+" garden egg. Boil until everything is collapsing."+(st.protein==="chicken"?" Fish the chicken out now to protect its texture; it returns at the end.":""), sec:900, lbl:"Soften · ~15 min"},
       {t:"Blend & return — no sieve", b:"Lift the vegetables out. Fresh tomato skins slip off with a pinch after boiling, and the garden egg peel pulls away too — take both off (canned tomatoes arrive skinless). Blend everything else smooth, seeds and pulp included, and pour it straight back in. Rinse the blender with a ladle of hot broth, never tap water.",
         w:"Skipping the sieve keeps the fibre and costs you the clarity. Starting at the top of the water range buys some of it back."},
-      {t:"The smoke", b:"Add the smoked catfish, if using, and let it simmer its smoky essence into the broth.", sec:600, lbl:"Catfish · 10 min"},
-      {t:"Poach the mushrooms", b:"Add the oyster mushrooms and poach gently."+(st.protein==="chicken"?" Slide the chicken back in to reheat.":""), sec:300, lbl:"Mushrooms · 5 min"},
+      {t:"The smoke", b:"Add "+q("catfish")+" smoked catfish, if using, and let it simmer its smoky essence into the broth.", sec:600, lbl:"Catfish · 10 min"},
+      {t:"Poach the mushrooms", b:"Add "+q("shroom")+" oyster mushrooms and poach gently."+(st.protein==="chicken"?" Slide the chicken back in to reheat.":""), sec:300, lbl:"Mushrooms · 5 min"},
       {t:"The polish", b:"Taste for salt. Deeply savoury, with real body from the unsieved pulp. Serve with fresh fufu."}
     ];
   },
@@ -277,11 +285,11 @@ const STEW = {
       {id:"fennel", base:1, unit:"tsp", name:"fennel seeds", sub:"The authentic scent."}
     ]},
     {title:"The tomato base", items:[
-      {id:"tpaste", base:12, unit:"oz", name:"tomato paste"},
+      {id:"tpaste", base:12, unit:"oz", name:"tomato paste", subFn:f => (f===1 ? "One standard 12 oz can." : "By weight, from standard 12 oz cans.") + " If spooning: about " + fmt(21*f) + " tbsp."},
       {id:"roma", base:5, unit:"", name:"roma tomatoes, blended smooth"}
     ]},
     {title:"The pantry & finish", items:[
-      {id:"fryonion", base:1, unit:"", name:"red onion, sliced — for the fry", tag:"buy extra", sub:"Step 4 needs this and the original list never counts it."},
+      {id:"fryonion", base:1, unit:"", name:"red onion, sliced — for the fry", tag:"buy extra", sub:"The browning step needs this and the original list never counts it."},
       {id:"oil", base:1, unit:"cup", name:"extra virgin olive oil", floor:1/3, tag:"has a floor"},
       {id:"curry1", base:3, unit:"tsp", name:"curry powder — for the steam"},
       {id:"curry2", base:1, unit:"tsp", name:"curry powder — for the marriage"},
@@ -296,20 +304,22 @@ const STEW = {
   steps(st){
     const p = this.proteins[st.protein], f = st.servings/this.base;
     const cups = this.stock.find(s => s.key === st.stock).cups * f;
+    const q = id => qty(this, id, f);
     return [
-      {lane:"Meat", t:"The safety wash", b:p.wash},
-      {lane:"Meat", t:"The steam — creating the stock", b:"Put the meat in a large pot with a third of the blended flavour bomb, the steam dose of curry powder and salt. Cover and steam on medium heat with no water at all. The meat has to release its own juices; that liquid is the entire stock.", sec:p.steamSec, lbl:p.steamLabel,
+      {lane:"Prep", t:"Blend the flavour bomb", b:"Blend "+q("onion1")+" large red onions, "+q("ginger")+" ginger, "+q("garlic")+" garlic cloves, "+q("chilli")+" scotch bonnet or habanero, "+q("shrimp")+" dried shrimp and "+q("fennel")+" fennel seeds until smooth. A third goes into the meat, two thirds into the gravy."},
+      {lane:"Meat", t:"The safety wash", b:q("meat")+" "+p.ing+". "+p.wash},
+      {lane:"Meat", t:"The steam — creating the stock", b:"Put the meat in a large pot with a third of the blended flavour bomb, "+q("curry1")+" curry powder and "+q("salt")+" salt. Cover and steam on medium heat with no water at all. The meat has to release its own juices; that liquid is the entire stock.", sec:p.steamSec, lbl:p.steamLabel,
         w:"Match the pot to the meat. In a pot too wide for a small batch, the juices spread thin and scorch before they ever pool."},
       {lane:"Meat", t:"Simmer to chewy-tender", b:"Once the juices appear, add just enough water to submerge. Simmer only until chewy-tender. The short window is deliberate: it preserves the chew and keeps the collagen locked inside the meat.", sec:p.simmerSec, lbl:p.simmerLabel,
         w:"This clock belongs to collagen, not batch size. A half batch still needs the full window."},
-      {lane:"Gravy", t:"Brown the sliced onion", b:"Heat the olive oil in "+(st.twoPots?"a second pot while the meat works":"the pot, once you've lifted the meat out")+". Fry the sliced red onion until it goes dark brown."},
-      {lane:"Gravy", t:"The paste fry", b:"Add the tomato paste and fry constantly until it turns dark burgundy and the oil runs red. Do not rush it — this is the step that kills the metallic taste.", sec:540, lbl:"Paste fry · 8–10 min",
+      {lane:"Gravy", t:"Brown the sliced onion", b:"Heat "+q("oil")+" olive oil in "+(st.twoPots?"a second pot while the meat works":"the pot, once you've lifted the meat out")+". Fry "+q("fryonion")+" sliced red onion until it goes dark brown."},
+      {lane:"Gravy", t:"The paste fry", b:"Add "+q("tpaste")+" tomato paste and fry constantly until it turns dark burgundy and the oil runs red. Do not rush it — this is the step that kills the metallic taste.", sec:540, lbl:"Paste fry · 8–10 min",
         w:"Barely shortens for a smaller batch. A chemistry clock, not a volume clock."},
-      {lane:"Gravy", t:"The flavour drop", b:"Add the remaining two thirds of the blended flavour bomb and fry.", sec:300, lbl:"Fry · 5 min"},
-      {lane:"Gravy", t:"The tomatoes", b:"Pour in the blended fresh tomatoes and simmer on medium-low until it thickens.", sec:900, lbl:"Thicken · 15 min"},
-      {lane:"Marriage", t:"The marriage & stock control", b:"Add the cooked meat into the gravy. Now ration the stock back in: about "+fmt(cups)+" cups at this setting, not the whole pot. Add the thyme, nutmeg, bay leaves and the second dose of curry powder, then drop the vegetables in.",
+      {lane:"Gravy", t:"The flavour drop", b:"Into the gravy pot, the one with the browned onion and fried tomato paste, not the meat: add the remaining two thirds of the blended flavour bomb and fry it in with the paste. The meat stays in its own pot until the marriage.", sec:300, lbl:"Fry · 5 min"},
+      {lane:"Gravy", t:"The tomatoes", b:"Still in the gravy pot, not the meat: pour "+q("roma")+" blended roma tomatoes over the paste and flavour bomb and simmer on medium-low until it thickens.", sec:900, lbl:"Thicken · 15 min"},
+      {lane:"Marriage", t:"The marriage & stock control", b:"Add the cooked meat into the gravy. Now ration the stock back in: about "+fmt(cups)+" cups at this setting, not the whole pot. Add "+q("thyme")+" dried thyme, "+q("nutmeg")+" nutmeg, "+q("bay")+" bay leaves and "+q("curry2")+" curry powder, then drop "+q("veg")+" sliced vegetables in.",
         w:"You can always add more stock. You cannot take it out."},
-      {lane:"Marriage", t:"The umami finish", b:"Taste. If it needs more depth, the extra dried shrimp goes in now. Then simmer low until the oil separates and floats to the top. Serve with rice, yam, or just a spoon.", sec:780, lbl:"Finish · 10–15 min"}
+      {lane:"Marriage", t:"The umami finish", b:"Taste. If it needs more depth, "+q("pop")+" extra dried shrimp goes in now. Then simmer low until the oil separates and floats to the top. Serve with rice, yam, or just a spoon.", sec:780, lbl:"Finish · 10–15 min"}
     ];
   },
   foot:[["Servings are my estimate.","Your sheet gives a weight, never a headcount. Twelve assumes caterer-style portions off 7.5 lb bone-in; plate lighter and the same pot reaches sixteen."],
