@@ -180,6 +180,12 @@ function qty(R, id, f){
   return "";
 }
 
+/* pressure-cooker mode is offered only for proteins that carry a pressure entry */
+const usePressure = (p, st) => !!(st.pressure && p.pressure);
+/* minutes on the meat clock: steam, then either the simmer or
+   10 min to come up to pressure + the cook + 10 min natural release */
+const meatMin = (p, st) => Math.round((p.steamSec + (usePressure(p, st) ? p.pressure.sec + 1200 : p.simmerSec)) / 60);
+
 /* ============================ recipe data ============================ */
 const SOUP = {
   id:"soup", base:12, min:2, max:16, stepBy:1,
@@ -189,16 +195,16 @@ const SOUP = {
   proteins:{
     goat:{label:"Goat", ing:"goat meat, cut into 2-inch chunks",
       steamSec:1200, steamLabel:"Steam · 15–20 min",
-      simmerSec:2700, simmerLabel:"Simmer · 45+ min",
-      simmerNote:"Test at 45 minutes for the Ghanaian chew: resilient and springy, stubborn but yielding.",
+      simmerSec:3600, simmerLabel:"Simmer · 45–75 min",
+      simmerNote:"Test at 45 minutes for the Ghanaian chew: resilient and springy, stubborn but yielding. Goat varies with age and cut, so keep testing every 10 minutes, up to about 75.",
       tip:"The reference protein. Bone-in pieces feed the broth its gelatin.",
-      clock:[20,45,15,15]},
+      clock:[20,60,15,15], pressure:{min:25, sec:1500}},
     beef:{label:"Beef", ing:"beef chuck or shank, cut into 2-inch chunks",
       steamSec:1200, steamLabel:"Steam · 15–20 min",
       simmerSec:2700, simmerLabel:"Simmer · 45–90 min",
       simmerNote:"Chuck lands near goat's clock; shank can hold out to 90 minutes. Simmer until stubborn-but-yielding.",
       tip:"Chuck behaves like goat. Shank is slower but pays you back in body.",
-      clock:[20,60,15,15]},
+      clock:[20,60,15,15], pressure:{min:30, sec:1800}},
     chicken:{label:"Chicken", ing:"bone-in chicken thighs & drumsticks",
       steamSec:720, steamLabel:"Steam · 10–12 min",
       simmerSec:1500, simmerLabel:"Simmer · 20–25 min",
@@ -233,11 +239,22 @@ const SOUP = {
   steps(st){
     const p = this.proteins[st.protein], f = st.servings/this.base;
     const q = id => qty(this, id, f);
+    const pr = usePressure(p, st);
+    /* the cooker only needs enough water to seal and keep the paste off the base; the rest goes in hot afterwards */
+    const pw = Math.min(Math.max(1, 2*f), 12*f), rest = 12*f - pw;
+    const cw = v => fmt(v) + (fmt(v) === "1" ? " cup" : " cups");
     return [
       {t:"Blend the paste", b:"Blend "+q("onion1")+" large onions, "+q("garlic")+" garlic cloves, "+q("ginger")+" inches of ginger, "+q("chilli")+" habanero and "+q("shrimp")+" dried shrimp into a smooth slurry."},
-      {t:"Steam the meat", b:"Coat the "+q("meat")+" of "+p.label.toLowerCase()+" with the slurry and "+q("tpaste")+" tomato paste, add "+q("salt")+" salt, and steam on medium-low, stirring every 5 minutes, so the aromatics bond with the meat fibres.", sec:p.steamSec, lbl:p.steamLabel},
-      {t:"Simmer to the bite test", b:"Slowly add "+fmt(12*f)+" cups of water. Boil, skim the grey foam once, then drop to a gentle simmer with the lid ajar. "+p.simmerNote, sec:p.simmerSec, lbl:p.simmerLabel,
-        w:"The foam is coagulated protein and saw grit, not fibre. Skim it once at the boil and stop fussing."},
+      {t:"Steam the meat", b:"Coat the "+q("meat")+" of "+p.label.toLowerCase()+" with the slurry and "+q("tpaste")+" tomato paste, add "+q("salt")+" salt, and steam on medium-low, stirring every 5 minutes, so the aromatics bond with the meat fibres."+(pr?" In the pressure cooker: use the sauté function, or rest the lid on loosely, unlocked.":""), sec:p.steamSec, lbl:p.steamLabel},
+      ...(pr ? [
+        {t:"Pressure cook the meat", b:"Pour in only "+cw(pw)+" of the water and scrape the base of the pot clean, so the tomato paste cannot catch and trigger a burn warning. Lock the lid and cook on high pressure.", sec:p.pressure.sec, lbl:"High pressure · "+p.pressure.min+" min",
+          w:"Never fill the cooker past its two-thirds line. A big batch may need two rounds."},
+        {t:"Natural release, then the rest of the water", b:"Let the pressure fall on its own for 10 minutes. Move the meat and its liquid into the soup pot ("+this.potSize(st.servings)+") and add the remaining "+cw(rest)+" of water, boiling hot from a kettle. Bring it to a boil and skim the grey foam once. Test a chunk for the Ghanaian chew; if it still resists, simmer on until it yields.", sec:600, lbl:"Release · 10 min",
+          w:"Time can be added but never taken back, so test before you move on."}
+      ] : [
+        {t:"Simmer to the bite test", b:"Slowly add "+fmt(12*f)+" cups of water. Boil, skim the grey foam once, then drop to a gentle simmer with the lid ajar. "+p.simmerNote, sec:p.simmerSec, lbl:p.simmerLabel,
+          w:"The foam is coagulated protein and saw grit, not fibre. Skim it once at the boil and stop fussing."}
+      ]),
       {t:"Soften the soup body", b:"Drop in "+q("toms")+" large tomatoes (juice and all, if canned), "+q("onion2")+" halved onion and "+q("gegg")+" garden egg. Boil until everything is collapsing."+(st.protein==="chicken"?" Fish the chicken out now to protect its texture; it returns at the end.":""), sec:900, lbl:"Soften · ~15 min"},
       {t:"Blend & return — no sieve", b:"Lift the vegetables out. Fresh tomato skins slip off with a pinch after boiling, and the garden egg peel pulls away too — take both off (canned tomatoes arrive skinless). Blend everything else smooth, seeds and pulp included, and pour it straight back in. Rinse the blender with a ladle of hot broth, never tap water.",
         w:"Skipping the sieve keeps the fibre and costs you the clarity. Starting at the top of the water range buys some of it back."},
@@ -260,9 +277,9 @@ const STEW = {
       wash:"Rinse thoroughly with cool water and lime or vinegar to strip the bone dust left by the butcher's saw.",
       tip:"The template's own protein. Bone and connective tissue make the stock that later becomes your gravy.", source:true},
     goat:{label:"Goat", title:"Goat Stew", ing:"goat, bone-in, cut into chunks",
-      steamSec:900, steamLabel:"Dry steam · 15 min", simmerSec:2100, simmerLabel:"Simmer · 30–40 min",
+      steamSec:900, steamLabel:"Dry steam · 15 min", simmerSec:3600, simmerLabel:"Simmer · 50–75 min",
       wash:"Rinse with cool water and lime or vinegar. Bone-saw grit and any lingering funk both come off here.",
-      tip:"A clean swap for shank — same collagen, same clock, same steps end to end. Expect the top of the 30–40 window.", source:false},
+      tip:"Same steps as shank, but goat is leaner and tougher, so it needs longer: plan on 50 to 75 minutes of simmer, and test a chunk rather than trusting the clock.", source:false, pressure:{min:25, sec:1500}},
     chicken:{label:"Chicken", title:"Chicken Stew", ing:"bone-in chicken thighs & drumsticks",
       steamSec:600, steamLabel:"Dry steam · 10 min", simmerSec:1050, simmerLabel:"Simmer · 15–20 min",
       wash:"Rinse with cool water and lime or vinegar. No bone dust to chase, but the acid rinse is still the habit.",
@@ -305,13 +322,21 @@ const STEW = {
     const p = this.proteins[st.protein], f = st.servings/this.base;
     const cups = this.stock.find(s => s.key === st.stock).cups * f;
     const q = id => qty(this, id, f);
+    const pr = usePressure(p, st);
     return [
       {lane:"Prep", t:"Blend the flavour bomb", b:"Blend "+q("onion1")+" large red onions, "+q("ginger")+" ginger, "+q("garlic")+" garlic cloves, "+q("chilli")+" scotch bonnet or habanero, "+q("shrimp")+" dried shrimp and "+q("fennel")+" fennel seeds until smooth. A third goes into the meat, two thirds into the gravy."},
       {lane:"Meat", t:"The safety wash", b:q("meat")+" "+p.ing+". "+p.wash},
-      {lane:"Meat", t:"The steam — creating the stock", b:"Put the meat in a large pot with a third of the blended flavour bomb, "+q("curry1")+" curry powder and "+q("salt")+" salt. Cover and steam on medium heat with no water at all. The meat has to release its own juices; that liquid is the entire stock.", sec:p.steamSec, lbl:p.steamLabel,
+      {lane:"Meat", t:"The steam — creating the stock", b:"Put the meat in a large pot with a third of the blended flavour bomb, "+q("curry1")+" curry powder and "+q("salt")+" salt. Cover and steam on medium heat with no water at all. The meat has to release its own juices; that liquid is the entire stock."+(pr?" In the pressure cooker: use the sauté function, or rest the lid on loosely, unlocked.":""), sec:p.steamSec, lbl:p.steamLabel,
         w:"Match the pot to the meat. In a pot too wide for a small batch, the juices spread thin and scorch before they ever pool."},
-      {lane:"Meat", t:"Simmer to chewy-tender", b:"Once the juices appear, keep the lid on and simmer only until chewy-tender.", sec:p.simmerSec, lbl:p.simmerLabel,
-        w:"This clock belongs to collagen, not batch size. A half batch still needs the full window."},
+      ...(pr ? [
+        {lane:"Meat", t:"Pressure cook to chewy-tender", b:"Keep the meat in the same pot with its own juices. If the cooker will not come to pressure, add ½ cup of water; the stock control step below rations what goes back into the gravy, so a little extra costs you nothing. Lock the lid and cook on high pressure.", sec:p.pressure.sec, lbl:"High pressure · "+p.pressure.min+" min",
+          w:"Never fill the cooker past its two-thirds line. A big batch may need two rounds."},
+        {lane:"Meat", t:"Natural release", b:"Let the pressure fall on its own for 10 minutes, then open the lid and test a chunk. Chewy-tender yields with a slight spring. If it still resists, lock it back up for 5 to 8 minutes.", sec:600, lbl:"Release · 10 min",
+          w:"Time can be added but never taken back, so go in small steps."}
+      ] : [
+        {lane:"Meat", t:"Simmer to chewy-tender", b:"Once the juices appear, keep the lid on and simmer only until chewy-tender.", sec:p.simmerSec, lbl:p.simmerLabel,
+          w:"This clock belongs to collagen, not batch size. A half batch still needs the full window."}
+      ]),
       {lane:"Gravy", t:"Brown the sliced onion", b:"Heat "+q("oil")+" olive oil in "+(st.twoPots?"a second pot while the meat works":"the pot, once you've lifted the meat out")+". Fry "+q("fryonion")+" sliced red onion until it goes dark brown."},
       {lane:"Gravy", t:"The paste fry", b:"Add "+q("tpaste")+" tomato paste and fry constantly until it turns dark burgundy and the oil runs red. Do not rush it — this is the step that kills the metallic taste.", sec:540, lbl:"Paste fry · 8–10 min",
         w:"Barely shortens for a smaller batch. A chemistry clock, not a volume clock."},
@@ -331,8 +356,8 @@ const RECIPES = {soup:SOUP, stew:STEW};
 /* ============================ state ============================ */
 const state = {
   recipe:"soup",
-  soup:{servings:12, protein:"goat"},
-  stew:{servings:12, protein:"beef", twoPots:true, stock:"gravy"}
+  soup:{servings:12, protein:"goat", pressure:false},
+  stew:{servings:12, protein:"beef", twoPots:true, stock:"gravy", pressure:false}
 };
 const ticked = new Set();
 const timers = Object.create(null);
@@ -470,13 +495,15 @@ function stepsHTML(R, st){
 function signatureHTML(R, st){
   const p = R.proteins[st.protein];
   if (R.id === "soup"){
-    const labels = ["steam","simmer","body","finish"];
+    const pr = usePressure(p, st);
+    const clock = pr ? [p.clock[0], p.pressure.min + 20, p.clock[2], p.clock[3]] : p.clock;
+    const labels = ["steam", pr ? "pressure" : "simmer", "body", "finish"];
     const cols = ["var(--warm)","var(--hot)","#8A4A2E","#5C4433"];
-    const total = p.clock.reduce((a,b) => a+b, 0);
+    const total = clock.reduce((a,b) => a+b, 0);
     return '<div class="panel"><div class="clockhead"><span class="cap">The protein clock</span>'
-      + '<span class="tot">≈ '+total+' min active simmer</span></div>'
-      + '<div class="clockbar">'+p.clock.map((m,i) => '<i style="flex-grow:'+m+';background:'+cols[i]+'"></i>').join("")+'</div>'
-      + '<div class="clocklab">'+labels.map((l,i) => '<span>'+l+' · '+p.clock[i]+'m</span>').join("")+'</div>'
+      + '<span class="tot">≈ '+total+' min '+(pr ? 'incl. build &amp; release' : 'active simmer')+'</span></div>'
+      + '<div class="clockbar">'+clock.map((m,i) => '<i style="flex-grow:'+m+';background:'+cols[i]+'"></i>').join("")+'</div>'
+      + '<div class="clocklab">'+labels.map((l,i) => '<span>'+l+' · '+clock[i]+'m</span>').join("")+'</div>'
       + '<p>'+esc(p.tip)+'</p></div>';
   }
   const f = st.servings / R.base;
@@ -494,14 +521,17 @@ function signatureHTML(R, st){
 function controlsHTML(R, st){
   const segs = Object.entries(R.proteins).map(([k,v]) =>
     '<button data-act="protein" data-val="'+k+'" aria-pressed="'+(k===st.protein)+'">'+esc(v.label)+'</button>').join("");
+  const p = R.proteins[st.protein];
   let extra = "";
+  if (p.pressure){
+    extra += '<button class="pill" data-act="pressmode" aria-pressed="'+(!!st.pressure)+'">'+(st.pressure?"Pressure cooker":"Stovetop")+'</button>';
+  }
   if (R.id === "soup"){
-    extra = '<span class="meta">'+R.potSize(st.servings)+'</span>';
+    extra += '<span class="meta">'+R.potSize(st.servings)+'</span>';
   } else {
-    const p = R.proteins[st.protein];
-    const meat = Math.round((p.steamSec+p.simmerSec)/60), gravy = 37, fin = 13;
+    const meat = meatMin(p, st), gravy = 37, fin = 13;
     const total = st.twoPots ? Math.max(meat,gravy)+fin : meat+gravy+fin;
-    extra = '<button class="pill" data-act="pots">'+(st.twoPots?"Two pots":"One pot")+'</button>'
+    extra += '<button class="pill" data-act="pots">'+(st.twoPots?"Two pots":"One pot")+'</button>'
       + '<span class="meta">~'+total+' min · '+fmt(7.5*st.servings/R.base)+' lb meat</span>';
   }
   return '<div class="controls"><div class="seg">'+segs+'</div>'
@@ -517,16 +547,24 @@ function render(){
   document.querySelectorAll(".tab").forEach(t =>
     t.setAttribute("aria-selected", String(t.dataset.val === state.recipe)));
 
-  let flag = "";
+  const pr = usePressure(p, st);
+  const notes = [];
   if (R.id === "stew" && !p.source){
-    flag = '<div class="flag"><b>Extrapolated.</b> Your sheet is written for beef hind shank. '
+    notes.push("<b>Extrapolated.</b> Your sheet is written for beef hind shank. "
       + (st.protein==="goat"
-        ? "Goat sits on the same clock, so the steps are unchanged, but the numbers are my read rather than ones you have tested."
-        : "Chicken's timings are my adaptation, not numbers you have tested.") + '</div>';
+        ? "Goat is leaner and tougher, so its simmer window is longer than shank's. The numbers are my best read rather than ones you have tested."
+        : "Chicken's timings are my adaptation, not numbers you have tested."));
   }
+  if (pr){
+    notes.push("<b>Pressure timings are estimates.</b> Check a chunk after the natural release. If it still resists, lock it back up for 5 to 8 minutes; time can be added but never taken back.");
+  }
+  const flag = notes.length ? '<div class="flag">'+notes.join("<br><br>")+'</div>' : "";
+  const foot = pr
+    ? R.foot.concat([["Pressure cooker notes.","Count the minutes to come up to pressure and to release on top of the timer. Never fill the cooker past its two-thirds line; a big batch may need two rounds. Do the steam in the same pot to save washing up."]])
+    : R.foot;
   let potline = "";
   if (R.id === "stew"){
-    const meat = Math.round((p.steamSec+p.simmerSec)/60);
+    const meat = meatMin(p, st);
     potline = '<p class="lede" style="margin-top:12px;font-size:12px">'
       + (st.twoPots
         ? "Two pots: the gravy is built while the meat works, so " + (37 > meat ? "the gravy is your slow lane here, not the meat." : "the meat sets the pace.")
@@ -546,7 +584,7 @@ function render(){
     + signatureHTML(R, st)
     + '<div class="cols"><section><h2>Ingredients</h2>'+onionNote+ingredientsHTML(R, st)+'</section>'
     + '<section><h2>Method</h2><ol>'+stepsHTML(R, st)+'</ol>'
-    + '<div class="foot">'+R.foot.map(x => '<p><b>'+esc(x[0])+'</b> '+esc(x[1])+'</p>').join("")+'</div>'
+    + '<div class="foot">'+foot.map(x => '<p><b>'+esc(x[0])+'</b> '+esc(x[1])+'</p>').join("")+'</div>'
     + '</section></div>';
 }
 
@@ -562,6 +600,7 @@ document.addEventListener("click", e => {
   else if (act === "plus"){ st.servings = Math.min(R.max, st.servings + R.stepBy); }
   else if (act === "minus"){ st.servings = Math.max(R.min, st.servings - R.stepBy); }
   else if (act === "pots"){ st.twoPots = !st.twoPots; }
+  else if (act === "pressmode"){ st.pressure = !st.pressure; }
   else if (act === "stock"){ st.stock = val; }
   else if (act === "tick"){ ticked.has(val) ? ticked.delete(val) : ticked.add(val); }
   else if (act === "timer"){
